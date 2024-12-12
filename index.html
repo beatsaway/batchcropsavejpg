@@ -32,7 +32,7 @@
   }
   #global-controls label {
     display: inline-block;
-    width: 80px;
+    width: 120px;
   }
   .per-image-controls {
     margin-top: 10px;
@@ -48,15 +48,30 @@
 <div id="drop-zone">Drag & Drop Images Here</div>
 
 <div id="global-controls">
-  <h3>Global Crop Settings (used unless overridden by individual image):</h3>
+  <h3>Global Crop & Naming Settings (used unless overridden):</h3>
   <label>X Pos:</label>
   <input id="globalXSlider" type="range" min="0" max="300" value="225" style="width:200px;vertical-align:middle;">
   <span id="globalXVal"></span><br>
+  
   <label>Width:</label>
   <input id="globalWSlider" type="range" min="10" max="300" value="75" style="width:200px;vertical-align:middle;">
   <span id="globalWVal"></span><br><br>
+  
+  <label>Y Pos:</label>
+  <input id="globalYSlider" type="range" min="0" max="300" value="0" style="width:200px;vertical-align:middle;">
+  <span id="globalYVal"></span><br>
+  
+  <label>Height:</label>
+  <input id="globalHSlider" type="range" min="10" max="300" value="150" style="width:200px;vertical-align:middle;">
+  <span id="globalHVal"></span><br><br>
+  
   <label>Filename prefix:</label>
   <input id="filenamePrefix" type="text" value="filename" style="vertical-align:middle;">
+  <br><br>
+  
+  <label>Start number:</label>
+  <input id="startNumberSlider" type="range" min="0" max="100" value="0" style="width:200px;vertical-align:middle;">
+  <span id="startNumberVal"></span>
 </div>
 
 <div id="image-list"></div>
@@ -76,15 +91,35 @@
   const globalXVal = document.getElementById('globalXVal');
   const globalWVal = document.getElementById('globalWVal');
   
-  const filenamePrefixInput = document.getElementById('filenamePrefix');
+  const globalYSlider = document.getElementById('globalYSlider');
+  const globalHSlider = document.getElementById('globalHSlider');
+  const globalYVal = document.getElementById('globalYVal');
+  const globalHVal = document.getElementById('globalHVal');
 
-  let imagesData = []; // Each: {originalImg, canvas, ctx, scaleFactor, overrideX, overrideW, localX, localW}
+  const filenamePrefixInput = document.getElementById('filenamePrefix');
+  
+  const startNumberSlider = document.getElementById('startNumberSlider');
+  const startNumberVal = document.getElementById('startNumberVal');
+
+  let imagesData = []; 
+  // Each imageData: {
+  //   originalImg, canvas, ctx, scaleFactor,
+  //   overrideX, overrideW, overrideY, overrideH,
+  //   localX, localW, localY, localH,
+  //   filenameInput, userChangedName
+  // }
 
   let cropX = parseInt(globalXSlider.value, 10);
   let cropWidth = parseInt(globalWSlider.value, 10);
+  let cropY = parseInt(globalYSlider.value, 10);
+  let cropHeight = parseInt(globalHSlider.value, 10);
+  let startNumber = parseInt(startNumberSlider.value, 10);
 
   globalXVal.textContent = cropX;
   globalWVal.textContent = cropWidth;
+  globalYVal.textContent = cropY;
+  globalHVal.textContent = cropHeight;
+  startNumberVal.textContent = startNumber;
 
   // Prevent default drag behaviors
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -147,7 +182,7 @@
         xSlider.type = 'range';
         xSlider.min = 0;
         xSlider.max = displayWidth;
-        xSlider.value = cropX; // start with global default
+        xSlider.value = cropX; 
         const xVal = document.createElement('span');
         xVal.textContent = xSlider.value;
 
@@ -158,20 +193,70 @@
         wSlider.type = 'range';
         wSlider.min = 10;
         wSlider.max = displayWidth;
-        wSlider.value = cropWidth; // start with global default
+        wSlider.value = cropWidth; 
         const wVal = document.createElement('span');
         wVal.textContent = wSlider.value;
+        
+        // Y Pos slider
+        const yLabel = document.createElement('label');
+        yLabel.textContent = 'Y:';
+        const ySlider = document.createElement('input');
+        ySlider.type = 'range';
+        ySlider.min = 0;
+        ySlider.max = displayHeight;
+        ySlider.value = cropY; 
+        const yVal = document.createElement('span');
+        yVal.textContent = ySlider.value;
+
+        // Height slider
+        const hLabel = document.createElement('label');
+        hLabel.textContent = 'H:';
+        const hSlider = document.createElement('input');
+        hSlider.type = 'range';
+        hSlider.min = 10;
+        hSlider.max = displayHeight;
+        hSlider.value = cropHeight; 
+        const hVal = document.createElement('span');
+        hVal.textContent = hSlider.value;
+
+        // Custom filename input
+        const filenameLabel = document.createElement('label');
+        filenameLabel.textContent = 'Name:';
+        const filenameInput = document.createElement('input');
+        filenameInput.type = 'text';
+        filenameInput.style.width = '120px';
 
         perImageControls.appendChild(xLabel);
         perImageControls.appendChild(xSlider);
         perImageControls.appendChild(xVal);
         perImageControls.appendChild(document.createElement('br'));
+
         perImageControls.appendChild(wLabel);
         perImageControls.appendChild(wSlider);
         perImageControls.appendChild(wVal);
+        perImageControls.appendChild(document.createElement('br'));
+
+        perImageControls.appendChild(yLabel);
+        perImageControls.appendChild(ySlider);
+        perImageControls.appendChild(yVal);
+        perImageControls.appendChild(document.createElement('br'));
+
+        perImageControls.appendChild(hLabel);
+        perImageControls.appendChild(hSlider);
+        perImageControls.appendChild(hVal);
+        perImageControls.appendChild(document.createElement('br'));
+
+        perImageControls.appendChild(filenameLabel);
+        perImageControls.appendChild(filenameInput);
 
         container.appendChild(perImageControls);
         imageList.appendChild(container);
+
+        const imageIndex = imagesData.length;
+        
+        // Set initial default filename
+        const defaultName = `${filenamePrefixInput.value.trim() || 'file'}${startNumber + imageIndex}`;
+        filenameInput.value = defaultName;
 
         const imageData = {
           originalImg: img,
@@ -180,19 +265,23 @@
           scaleFactor: scaleFactor,
           overrideX: false,
           overrideW: false,
+          overrideY: false,
+          overrideH: false,
           localX: parseInt(xSlider.value, 10),
-          localW: parseInt(wSlider.value, 10)
+          localW: parseInt(wSlider.value, 10),
+          localY: parseInt(ySlider.value, 10),
+          localH: parseInt(hSlider.value, 10),
+          filenameInput: filenameInput,
+          userChangedName: false
         };
         imagesData.push(imageData);
 
-        // Draw with current settings (currently global, since no overrides)
         drawCropOverlay(imageData);
 
-        // Add event listeners for the per-image sliders
+        // Event listeners for image sliders
         xSlider.addEventListener('input', () => {
           imageData.localX = parseInt(xSlider.value, 10);
           xVal.textContent = xSlider.value;
-          // User adjusted local X, so overrideX = true
           imageData.overrideX = true;
           drawCropOverlay(imageData);
         });
@@ -200,9 +289,26 @@
         wSlider.addEventListener('input', () => {
           imageData.localW = parseInt(wSlider.value, 10);
           wVal.textContent = wSlider.value;
-          // User adjusted local W, so overrideW = true
           imageData.overrideW = true;
           drawCropOverlay(imageData);
+        });
+
+        ySlider.addEventListener('input', () => {
+          imageData.localY = parseInt(ySlider.value, 10);
+          yVal.textContent = ySlider.value;
+          imageData.overrideY = true;
+          drawCropOverlay(imageData);
+        });
+
+        hSlider.addEventListener('input', () => {
+          imageData.localH = parseInt(hSlider.value, 10);
+          hVal.textContent = hSlider.value;
+          imageData.overrideH = true;
+          drawCropOverlay(imageData);
+        });
+
+        filenameInput.addEventListener('input', () => {
+          imageData.userChangedName = true;
         });
       };
       img.src = e.target.result;
@@ -211,27 +317,38 @@
   }
 
   function drawCropOverlay(data) {
-    const {ctx, canvas, originalImg, scaleFactor, overrideX, overrideW, localX, localW} = data;
+    const {ctx, canvas, originalImg, scaleFactor,
+           overrideX, overrideW, overrideY, overrideH,
+           localX, localW, localY, localH} = data;
+
     const displayWidth = canvas.width;
     const displayHeight = canvas.height;
 
     let finalX = overrideX ? localX : cropX;
     let finalW = overrideW ? localW : cropWidth;
+    let finalY = overrideY ? localY : cropY;
+    let finalH = overrideH ? localH : cropHeight;
+
+    // Bound checking for X and W
+    if (finalX + finalW > displayWidth) finalX = displayWidth - finalW;
+    if (finalX < 0) finalX = 0;
+
+    // Bound checking for Y and H
+    if (finalY + finalH > displayHeight) finalY = displayHeight - finalH;
+    if (finalY < 0) finalY = 0;
 
     ctx.clearRect(0, 0, displayWidth, displayHeight);
     ctx.drawImage(originalImg, 0, 0, displayWidth, displayHeight);
 
-    // Bound checking
-    if (finalX + finalW > displayWidth) finalX = displayWidth - finalW;
-    if (finalX < 0) finalX = 0;
-
     ctx.strokeStyle = 'red';
     ctx.lineWidth = 2;
-    ctx.strokeRect(finalX, 0, finalW, displayHeight);
+    ctx.strokeRect(finalX, finalY, finalW, finalH);
 
-    // If we adjusted due to boundary and local overrides are active, update localX/W
+    // If we adjusted due to boundary and local overrides are active, update local values
     if (overrideX) data.localX = finalX;
     if (overrideW) data.localW = finalW;
+    if (overrideY) data.localY = finalY;
+    if (overrideH) data.localH = finalH;
   }
 
   globalXSlider.addEventListener('input', () => {
@@ -246,25 +363,59 @@
     redrawAllImages();
   });
 
+  globalYSlider.addEventListener('input', () => {
+    cropY = parseInt(globalYSlider.value, 10);
+    globalYVal.textContent = cropY;
+    redrawAllImages();
+  });
+
+  globalHSlider.addEventListener('input', () => {
+    cropHeight = parseInt(globalHSlider.value, 10);
+    globalHVal.textContent = cropHeight;
+    redrawAllImages();
+  });
+
+  startNumberSlider.addEventListener('input', () => {
+    startNumber = parseInt(startNumberSlider.value, 10);
+    startNumberVal.textContent = startNumber;
+    updateFilenamesFromGlobals();
+  });
+
+  filenamePrefixInput.addEventListener('input', () => {
+    updateFilenamesFromGlobals();
+  });
+
   function redrawAllImages() {
     // For images that do not override a dimension, update their local slider to match global value
     for (const data of imagesData) {
-      const {canvas, overrideX, overrideW} = data;
+      const {canvas, overrideX, overrideW, overrideY, overrideH} = data;
+      const sliders = canvas.parentNode.querySelectorAll('.per-image-controls input[type=range]');
+      
+      // sliders order: [xSlider, wSlider, ySlider, hSlider]
+      const xSlider = sliders[0];
+      const wSlider = sliders[1];
+      const ySlider = sliders[2];
+      const hSlider = sliders[3];
+
       if (!overrideX) {
-        // Update localX to match global and also update slider UI
         data.localX = cropX;
-        const xSlider = canvas.parentNode.querySelector('.per-image-controls input[type=range]:first-of-type');
-        const xVal = xSlider.nextSibling; 
         xSlider.value = cropX;
-        xVal.textContent = cropX;
+        xSlider.nextSibling.textContent = cropX;
       }
       if (!overrideW) {
-        // Update localW to match global and also update slider UI
         data.localW = cropWidth;
-        const wSlider = canvas.parentNode.querySelectorAll('.per-image-controls input[type=range]')[1];
-        const wVal = wSlider.nextSibling; 
         wSlider.value = cropWidth;
-        wVal.textContent = cropWidth;
+        wSlider.nextSibling.textContent = cropWidth;
+      }
+      if (!overrideY) {
+        data.localY = cropY;
+        ySlider.value = cropY;
+        ySlider.nextSibling.textContent = cropY;
+      }
+      if (!overrideH) {
+        data.localH = cropHeight;
+        hSlider.value = cropHeight;
+        hSlider.nextSibling.textContent = cropHeight;
       }
     }
 
@@ -273,28 +424,47 @@
     }
   }
 
+  function updateFilenamesFromGlobals() {
+    const prefix = filenamePrefixInput.value.trim() || 'file';
+    for (let i = 0; i < imagesData.length; i++) {
+      const data = imagesData[i];
+      // Update filename only if user hasn't manually changed it
+      if (!data.userChangedName) {
+        data.filenameInput.value = `${prefix}${startNumber + i}`;
+      }
+    }
+  }
+
   saveAllBtn.addEventListener('click', async () => {
     const zip = new JSZip();
-    const filenamePrefix = filenamePrefixInput.value.trim() || 'file';
+    const prefix = filenamePrefixInput.value.trim() || 'file';
 
     for (let i = 0; i < imagesData.length; i++) {
       const data = imagesData[i];
-      const {originalImg, canvas, scaleFactor, overrideX, overrideW, localX, localW} = data;
+      const {
+        originalImg, canvas, scaleFactor, 
+        overrideX, overrideW, overrideY, overrideH,
+        localX, localW, localY, localH, filenameInput
+      } = data;
 
       const displayWidth = canvas.width;
       const displayHeight = canvas.height;
 
       let finalX = overrideX ? localX : cropX;
       let finalW = overrideW ? localW : cropWidth;
+      let finalY = overrideY ? localY : cropY;
+      let finalH = overrideH ? localH : cropHeight;
 
       // Bound checking
       if (finalX + finalW > displayWidth) finalX = displayWidth - finalW;
       if (finalX < 0) finalX = 0;
+      if (finalY + finalH > displayHeight) finalY = displayHeight - finalH;
+      if (finalY < 0) finalY = 0;
 
       const origX = Math.round(finalX / scaleFactor);
       const origW = Math.round(finalW / scaleFactor);
-      const origY = 0;
-      const origH = originalImg.height; // full height
+      const origY = Math.round(finalY / scaleFactor);
+      const origH = Math.round(finalH / scaleFactor);
 
       // Create an off-screen canvas to crop
       const offCanvas = document.createElement('canvas');
@@ -303,14 +473,23 @@
       const offCtx = offCanvas.getContext('2d');
       offCtx.drawImage(originalImg, origX, origY, origW, origH, 0, 0, origW, origH);
 
+      // Use the filename from the input, ensure it ends with .jpg
+      let customName = filenameInput.value.trim();
+      let finalFilename;
+      if (customName.toLowerCase().endsWith('.jpg')) {
+        finalFilename = customName;
+      } else {
+        finalFilename = customName + '.jpg';
+      }
+
       // Convert to blob as JPEG
       const blob = await new Promise(resolve => offCanvas.toBlob(resolve, 'image/jpeg', 0.9));
-      zip.file(`${filenamePrefix}${i+1}.jpg`, blob);
+      zip.file(finalFilename, blob);
     }
 
     // Generate the zip file
     const content = await zip.generateAsync({type:"blob"});
-    saveAs(content, `${filenamePrefix}.zip`);
+    saveAs(content, `${prefix}.zip`);
   });
 </script>
 </body>
