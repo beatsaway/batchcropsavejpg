@@ -315,40 +315,74 @@
     reader.readAsDataURL(file);
   }
 
-  function drawCropOverlay(data) {
-    const {ctx, canvas, originalImg, scaleFactor,
-           overrideX, overrideW, overrideY, overrideH,
-           localX, localW, localY, localH} = data;
+function drawCropOverlay(data) {
+  const {ctx, canvas, originalImg, scaleFactor,
+         overrideX, overrideW, overrideY, overrideH,
+         localX, localW, localY, localH} = data;
 
-    const displayWidth = canvas.width;
-    const displayHeight = canvas.height;
+  const displayWidth = canvas.width;
+  const displayHeight = canvas.height;
 
-    let finalX = overrideX ? localX : cropX;
-    let finalW = overrideW ? localW : cropWidth;
-    let finalY = overrideY ? localY : cropY;
-    let finalH = overrideH ? localH : cropHeight;
+  let finalX = overrideX ? localX : cropX;
+  let finalW = overrideW ? localW : cropWidth;
+  let finalY = overrideY ? localY : cropY;
+  let finalH = overrideH ? localH : cropHeight;
 
-    // Bound checking for X and W
-    if (finalX + finalW > displayWidth) finalX = displayWidth - finalW;
-    if (finalX < 0) finalX = 0;
+  // Constrain width and height to display dimensions
+  finalW = Math.min(finalW, displayWidth);
+  finalH = Math.min(finalH, displayHeight);
 
-    // Bound checking for Y and H
-    if (finalY + finalH > displayHeight) finalY = displayHeight - finalH;
-    if (finalY < 0) finalY = 0;
+  // Constrain X position
+  finalX = Math.max(0, Math.min(finalX, displayWidth - finalW));
 
-    ctx.clearRect(0, 0, displayWidth, displayHeight);
-    ctx.drawImage(originalImg, 0, 0, displayWidth, displayHeight);
+  // Constrain Y position
+  finalY = Math.max(0, Math.min(finalY, displayHeight - finalH));
 
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(finalX, finalY, finalW, finalH);
+  ctx.clearRect(0, 0, displayWidth, displayHeight);
+  ctx.drawImage(originalImg, 0, 0, displayWidth, displayHeight);
 
-    // If we adjusted due to boundary and local overrides are active, update local values
-    if (overrideX) data.localX = finalX;
-    if (overrideW) data.localW = finalW;
-    if (overrideY) data.localY = finalY;
-    if (overrideH) data.localH = finalH;
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(finalX, finalY, finalW, finalH);
+
+  // Update local values while respecting display boundaries
+  if (overrideX) {
+    data.localX = finalX;
+    // Update the corresponding slider value if it exists
+    const xSlider = canvas.parentNode.querySelector('.per-image-controls input[type=range]:nth-child(2)');
+    if (xSlider) {
+      xSlider.value = finalX;
+      xSlider.nextSibling.textContent = finalX;
+    }
   }
+  if (overrideW) {
+    data.localW = finalW;
+    // Update the corresponding slider value if it exists
+    const wSlider = canvas.parentNode.querySelector('.per-image-controls input[type=range]:nth-child(5)');
+    if (wSlider) {
+      wSlider.value = finalW;
+      wSlider.nextSibling.textContent = finalW;
+    }
+  }
+  if (overrideY) {
+    data.localY = finalY;
+    // Update the corresponding slider value if it exists
+    const ySlider = canvas.parentNode.querySelector('.per-image-controls input[type=range]:nth-child(8)');
+    if (ySlider) {
+      ySlider.value = finalY;
+      ySlider.nextSibling.textContent = finalY;
+    }
+  }
+  if (overrideH) {
+    data.localH = finalH;
+    // Update the corresponding slider value if it exists
+    const hSlider = canvas.parentNode.querySelector('.per-image-controls input[type=range]:nth-child(11)');
+    if (hSlider) {
+      hSlider.value = finalH;
+      hSlider.nextSibling.textContent = finalH;
+    }
+  }
+}
 
   globalXSlider.addEventListener('input', () => {
     cropX = parseInt(globalXSlider.value, 10);
